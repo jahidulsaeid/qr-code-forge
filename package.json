@@ -1,6 +1,6 @@
 {
   "name": "qr-code-forge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Production-ready QR code generator with support for multiple content types, logo embedding, and customizable output formats.",
   "type": "module",
   "main": "./dist/index.cjs",

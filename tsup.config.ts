@@ -11,5 +11,5 @@ export default defineConfig({
   minify: false,
   target: 'es2020',
   outDir: 'dist',
-  external: ['react'],
+  external: ['react', 'node:fs', 'node:fs/promises', 'node:path', 'node:zlib', 'fs', 'fs/promises', 'path', 'zlib'],
 });
