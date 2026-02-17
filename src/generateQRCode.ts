@@ -9,7 +9,6 @@ import type {
 import { ValidationError } from './types.js';
 import { validateOptions } from './validators.js';
 import { formatContent } from './formatters/index.js';
-import { embedLogo } from './logo/embedLogo.js';
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
@@ -104,8 +103,10 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     }
   }
 
-  // ── Logo embedding (PNG only) ──────────────────────────────────────────
+  // ── Logo embedding (PNG only, Node.js only) ───────────────────────────
   if (options.logo && format === 'png' && Buffer.isBuffer(data)) {
+    // Dynamic import keeps Node-only deps (fs, zlib) out of browser bundles
+    const { embedLogo } = await import('./logo/embedLogo.js');
     data = await embedLogo({
       qrBuffer: data,
       source: options.logo.source,

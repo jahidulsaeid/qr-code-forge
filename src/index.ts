@@ -11,8 +11,7 @@ export { formatURL } from './formatters/urlFormatter.js';
 export { formatText } from './formatters/textFormatter.js';
 export { formatContact } from './formatters/contactFormatter.js';
 
-// Logo embedding
-export { embedLogo } from './logo/embedLogo.js';
+// Logo embedding (Node.js only — import from 'qr-code-forge/node' or dynamic import)
 export type { EmbedLogoParams } from './logo/embedLogo.js';
 
 // All public types

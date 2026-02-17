@@ -261,6 +261,134 @@ document.body.appendChild(img);
 
 ---
 
+## React Usage
+
+A built-in `useQRCode` hook is available at `qr-code-forge/react`:
+
+### Basic Example
+
+```tsx
+import { useQRCode } from 'qr-code-forge/react';
+
+function QRCodeImage() {
+  const { qrCode, loading, error } = useQRCode({
+    content: 'https://example.com',
+    size: 256,
+  });
+
+  if (loading) return <p>Generating…</p>;
+  if (error)   return <p>Error: {error.message}</p>;
+  if (!qrCode) return null;
+
+  return <img src={qrCode.data as string} alt="QR Code" />;
+}
+```
+
+### With Dynamic Content (e.g. from URL params)
+
+```tsx
+import { useSearchParams } from 'react-router-dom';
+import { useQRCode } from 'qr-code-forge/react';
+
+function DynamicQR() {
+  const [searchParams] = useSearchParams();
+  const url = searchParams.get('url') ?? 'https://example.com';
+
+  const { qrCode, loading, error } = useQRCode({
+    content: url,
+    format: 'dataurl',   // default for the hook
+    size: 512,
+    darkColor: '#1a1a2e',
+  });
+
+  if (loading) return <p>Generating…</p>;
+  if (error)   return <p>Error: {error.message}</p>;
+  if (!qrCode) return null;
+
+  return <img src={qrCode.data as string} alt="QR Code" />;
+}
+```
+
+### SVG Output (inline rendering)
+
+```tsx
+import { useQRCode } from 'qr-code-forge/react';
+
+function InlineSVG() {
+  const { qrCode } = useQRCode({
+    content: 'https://example.com',
+    format: 'svg',
+  });
+
+  if (!qrCode) return null;
+
+  return <div dangerouslySetInnerHTML={{ __html: qrCode.data as string }} />;
+}
+```
+
+### Contact Card QR
+
+```tsx
+import { useQRCode } from 'qr-code-forge/react';
+
+function ContactQR() {
+  const { qrCode } = useQRCode({
+    content: {
+      type: 'contact',
+      name: 'Jane Smith',
+      phone: '+1-555-123-4567',
+      email: 'jane@example.com',
+      organization: 'Acme Corp',
+    },
+  });
+
+  if (!qrCode) return null;
+  return <img src={qrCode.data as string} alt="Contact QR" />;
+}
+```
+
+### Conditional Generation
+
+```tsx
+import { useQRCode } from 'qr-code-forge/react';
+import { useState } from 'react';
+
+function ConditionalQR() {
+  const [url, setUrl] = useState('');
+
+  const { qrCode, loading } = useQRCode({
+    content: url || 'https://example.com',
+    enabled: url.length > 0,  // only generate when there's input
+  });
+
+  return (
+    <div>
+      <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Enter URL…" />
+      {loading && <p>Generating…</p>}
+      {qrCode && <img src={qrCode.data as string} alt="QR" />}
+    </div>
+  );
+}
+```
+
+### `useQRCode` API
+
+```ts
+function useQRCode(options: UseQRCodeOptions): UseQRCodeReturn;
+```
+
+| Option    | Type                                   | Default      | Description                                  |
+| --------- | -------------------------------------- | ------------ | -------------------------------------------- |
+| `content` | `QRContent \| string`                  | *(required)* | Content to encode.                           |
+| `format`  | `'svg' \| 'dataurl'`                   | `'dataurl'`  | Output format (logo/PNG not available in browser). |
+| `size`    | `number`                               | `256`        | Image size in pixels.                        |
+| `enabled` | `boolean`                              | `true`       | Set `false` to defer generation.             |
+| …         | All other `QRCodeOptions` (except `logo`) | —         | See main API docs above.                     |
+
+Returns `{ qrCode: QRCodeResult | null, loading: boolean, error: Error | null }`.
+
+---
+
 ## Node.js Usage
 
 ```ts
