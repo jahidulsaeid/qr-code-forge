@@ -201,12 +201,12 @@ interface QRCodeBaseProps {
 /** Props for the `<QRCode>` component (renders an `<img>`). */
 export interface QRCodeProps
   extends QRCodeBaseProps,
-    Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'width' | 'height' | 'content'> {}
+    Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'width' | 'height' | 'content' | 'loading' | 'onError'> {}
 
 /** Props for the `<QRCodeSVG>` component (renders inline SVG). */
 export interface QRCodeSVGProps
   extends QRCodeBaseProps,
-    Omit<HTMLAttributes<HTMLDivElement>, 'content'> {}
+    Omit<HTMLAttributes<HTMLDivElement>, 'content' | 'onError'> {}
 
 // ─── <QRCode> component (data-URL img) ──────────────────────────────────────
 
@@ -218,7 +218,7 @@ export interface QRCodeSVGProps
  *
  * @example
  * ```tsx
- * <QRCode content="https://example.com" size={200} className="rounded-lg shadow" />
+ * <QRCode content="https://example.com" size={200} className="shadow rounded-lg" />
  * ```
  */
 export const QRCode = forwardRef<HTMLImageElement, QRCodeProps>(function QRCode(
