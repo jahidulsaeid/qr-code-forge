@@ -18,8 +18,6 @@ const DEFAULT_DARK = '#000000';
 const DEFAULT_LIGHT = '#ffffff';
 const DEFAULT_EC: ErrorCorrectionLevel = 'M';
 const DEFAULT_FORMAT: OutputFormat = 'png';
-const DEFAULT_LOGO_SIZE_PERCENT = 20;
-const DEFAULT_LOGO_MARGIN = 4;
 
 // ─── Main entry point ────────────────────────────────────────────────────────
 
@@ -103,20 +101,9 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     }
   }
 
-  // ── Logo embedding (PNG only, Node.js only) ───────────────────────────
-  if (options.logo && format === 'png' && Buffer.isBuffer(data)) {
-    // Dynamic import keeps Node-only deps (fs, zlib) out of browser bundles
-    const { embedLogo } = await import('./logo/embedLogo.js');
-    data = await embedLogo({
-      qrBuffer: data,
-      source: options.logo.source,
-      sizePercent: options.logo.sizePercent ?? DEFAULT_LOGO_SIZE_PERCENT,
-      margin: options.logo.margin ?? DEFAULT_LOGO_MARGIN,
-    });
-  } else if (options.logo && format !== 'png') {
-    // We intentionally do not throw — just ignore logo for non-PNG formats
-    // so callers can switch formats without code changes.
-  }
+  // Logo embedding is only available via 'qr-code-forge/node'.
+  // The browser entry silently ignores the logo option to avoid
+  // bundling Node.js built-ins (fs, path, zlib).
 
   return {
     data,
