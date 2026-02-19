@@ -473,7 +473,7 @@ try {
 | Logo without explicit EC level  | Error correction auto-raised to `H`          |
 
 ---
-
+<!-- 
 ## Publishing (npm + GitHub Packages)
 
 This package is published to **both** registries automatically via GitHub Actions on every release.
@@ -509,7 +509,7 @@ Set these in **GitHub → Settings → Secrets and variables → Actions**:
 
 > `GITHUB_TOKEN` is provided automatically by GitHub Actions.
 
----
+--- -->
 
 ## Contributing
 
