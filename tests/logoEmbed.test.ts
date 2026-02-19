@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { generateQRCode } from '../src/generateQRCode';
+import { generateQRCode } from '../src/node';
 import { LogoError, ValidationError } from '../src/types';
 
 /**
