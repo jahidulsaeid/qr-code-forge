@@ -7,9 +7,6 @@ import {
 
 // ─── URL validation ──────────────────────────────────────────────────────────
 
-const URL_RE =
-  /^https?:\/\/(?:[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]|[^\x00-\x7F])+$/;
-
 /**
  * Validate that a string is a well-formed HTTP(S) URL.
  * Throws `ValidationError` if the check fails.

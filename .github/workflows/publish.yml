@@ -1,0 +1,84 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  # ── Run tests before publishing ────────────────────────────────────────────
+  test:
+    name: Test before publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  # ── Publish to npmjs.com ───────────────────────────────────────────────────
+  publish-npm:
+    name: Publish → npm
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ── Publish to GitHub Packages ─────────────────────────────────────────────
+  publish-github:
+    name: Publish → GitHub Packages
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@jahidulsaeid'
+
+      - run: npm ci
+      - run: npm run build
+
+      # Temporarily rename the package to the scoped name required by
+      # GitHub Packages, publish, then restore the original name.
+      - name: Publish to GitHub Packages
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const original = pkg.name;
+            pkg.name = '@jahidulsaeid/qr-code-forge';
+            pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+            console.log('Renamed package to', pkg.name);
+          "
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

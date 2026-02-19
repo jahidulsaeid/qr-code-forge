@@ -1,6 +1,6 @@
 {
   "name": "qr-code-forge",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Production-ready QR code generator with support for multiple content types, logo embedding, and customizable output formats.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -59,17 +59,25 @@
     "qr-code",
     "generator",
     "vcard",
-    "mecard",
     "logo",
     "svg",
     "png",
-    "typescript"
+    "react",
+    "react-hook",
+    "react-component",
+    "typescript",
+    "node",
+    "browser"
   ],
-  "author": "",
+  "author": "Jahidul Saeid <jahidulsaeid@github.com>",
   "license": "MIT",
+  "homepage": "https://github.com/jahidulsaeid/qr-code-forge#readme",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/jahidulsaeid/qr-code-forge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jahidulsaeid/qr-code-forge/issues"
   },
   "engines": {
     "node": ">=16.0.0"

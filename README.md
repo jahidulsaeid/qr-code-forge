@@ -1,9 +1,13 @@
 # qr-code-forge
 
-Production-ready QR code generator for Node.js with support for multiple content types, logo embedding, and customizable output formats.
+Production-ready QR code generator for Node.js and React with support for multiple content types, logo embedding, and customizable output formats.
 
+[![npm version](https://img.shields.io/npm/v/qr-code-forge.svg)](https://www.npmjs.com/package/qr-code-forge)
+[![npm downloads](https://img.shields.io/npm/dm/qr-code-forge.svg)](https://www.npmjs.com/package/qr-code-forge)
+[![CI](https://github.com/jahidulsaeid/qr-code-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/jahidulsaeid/qr-code-forge/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D16-brightgreen)](https://nodejs.org)
 
 ---
 
@@ -11,20 +15,53 @@ Production-ready QR code generator for Node.js with support for multiple content
 
 - **Multiple content types** — URL, plain text, contact (vCard 3.0)
 - **Output formats** — PNG, SVG, Data URL (base64)
-- **Logo embedding** — center a logo on any PNG QR code with auto error-correction boost
+- **Logo embedding** — center a logo on any PNG QR code (Node.js / server only)
+- **React components** — drop-in `<QRCode>` and `<QRCodeSVG>` components with `forwardRef`
+- **React hook** — `useQRCode` with `regenerate`, `isIdle`, and reactive option tracking
 - **Customisable** — size, margin, colours, error correction level
 - **Extensible** — register custom formatters for new content types (email, Wi-Fi, etc.)
 - **Type-safe** — full TypeScript types with discriminated unions and strict mode
-- **Dual module** — ESM + CommonJS output, tree-shakable, `sideEffects: false`
+- **Dual module** — ESM + CommonJS, tree-shakable, `sideEffects: false`
 - **Zero native deps** — only `qrcode` as a runtime dependency
+
+---
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Node.js Usage](#nodejs-usage)
+- [React Usage](#react-usage)
+  - [Components](#components)
+  - [Hook](#hook)
+- [Browser Usage](#browser-usage)
+- [API Reference](#api-reference)
+- [Logo Embedding](#logo-embedding)
+- [Custom Formatters](#custom-formatters)
+- [Error Handling](#error-handling)
+- [Publishing (npm + GitHub Packages)](#publishing-npm--github-packages)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
 ## Installation
 
 ```bash
+# npm
 npm install qr-code-forge
+
+# pnpm
+pnpm add qr-code-forge
+
+# yarn
+yarn add qr-code-forge
 ```
+
+> **GitHub Packages** (alternative registry):
+> ```bash
+> npm install @jahidulsaeid/qr-code-forge --registry https://npm.pkg.github.com
+> ```
 
 ---
 
@@ -33,44 +70,31 @@ npm install qr-code-forge
 ```ts
 import { generateQRCode } from 'qr-code-forge';
 
-// Generate a QR code for a URL (default behaviour)
 const result = await generateQRCode({ content: 'https://example.com' });
 // result.data → PNG Buffer
 ```
 
 ---
 
-## Usage Examples
-
-### URL QR Code
+## Node.js Usage
 
 ```ts
 import { generateQRCode } from 'qr-code-forge';
 import { writeFileSync } from 'node:fs';
 
-const result = await generateQRCode({
-  content: 'https://example.com',
-  size: 512,
-});
+// URL QR → PNG
+const png = await generateQRCode({ content: 'https://example.com', size: 512 });
+writeFileSync('qr.png', png.data);
 
-writeFileSync('qr-url.png', result.data);
-```
-
-### Plain Text QR Code
-
-```ts
-const result = await generateQRCode({
+// Plain text → SVG
+const svg = await generateQRCode({
   content: { type: 'text', text: 'Hello from QR Code Forge! 🚀' },
   format: 'svg',
 });
+writeFileSync('qr.svg', svg.data);
 
-writeFileSync('qr-text.svg', result.data);
-```
-
-### Contact (vCard) QR Code
-
-```ts
-const result = await generateQRCode({
+// Contact card (vCard 3.0)
+const contact = await generateQRCode({
   content: {
     type: 'contact',
     name: 'Jane Smith',
@@ -81,32 +105,10 @@ const result = await generateQRCode({
     website: 'https://acme.com',
   },
 });
+writeFileSync('qr-contact.png', contact.data);
 
-writeFileSync('qr-contact.png', result.data);
-```
-
-### QR Code with Logo
-
-```ts
-const result = await generateQRCode({
-  content: 'https://example.com',
-  size: 512,
-  logo: {
-    source: './my-logo.png',   // local path or URL
-    sizePercent: 20,           // 20% of QR width
-    margin: 6,                 // px padding around logo
-  },
-});
-
-writeFileSync('qr-with-logo.png', result.data);
-```
-
-> **Note:** Logo embedding is only supported for PNG output. Error correction is automatically raised to `H` when a logo is used (unless you explicitly set a level).
-
-### Custom Colours
-
-```ts
-const result = await generateQRCode({
+// Custom colours
+const colored = await generateQRCode({
   content: 'https://example.com',
   darkColor: '#1a1a2e',
   lightColor: '#e0e0e0',
@@ -116,54 +118,285 @@ const result = await generateQRCode({
 });
 ```
 
-### Data URL for Browser/HTML
+---
+
+## Logo Embedding
+
+Logo embedding requires **PNG format** and the **Node.js entry** (`qr-code-forge/node`).
+Error correction is automatically raised to `H` when a logo is used.
 
 ```ts
+import { generateQRCode } from 'qr-code-forge/node';  // ← /node entry
+import { writeFileSync } from 'node:fs';
+
 const result = await generateQRCode({
   content: 'https://example.com',
-  format: 'dataurl',
+  size: 512,
+  logo: {
+    source: './my-logo.png',  // local path or https:// URL
+    sizePercent: 20,          // logo takes 20% of QR width (1–40)
+    margin: 6,                // px padding around logo
+  },
 });
 
-// Use directly in an <img> tag:
-// <img src="${result.data}" />
-console.log(result.data); // data:image/png;base64,iVBOR...
+writeFileSync('qr-with-logo.png', result.data);
+```
+
+> **Browser / React:** Logo embedding is not available in the browser. See [Logo overlay (browser)](#logo-overlay-browser) below.
+
+---
+
+## React Usage
+
+```bash
+npm install qr-code-forge react react-dom
+```
+
+```ts
+import { QRCode, QRCodeSVG, useQRCode } from 'qr-code-forge/react';
+```
+
+### Components
+
+#### `<QRCode>` — Data-URL `<img>`
+
+Renders an `<img>` element. Accepts all standard `<img>` HTML attributes.
+
+```tsx
+import { QRCode } from 'qr-code-forge/react';
+
+// Minimal
+<QRCode content="https://example.com" />
+
+// All options
+<QRCode
+  content="https://example.com"
+  size={300}
+  darkColor="#1a1a2e"
+  lightColor="#f0f0f0"
+  errorCorrectionLevel="H"
+  alt="My QR Code"
+  className="rounded-xl shadow-lg"
+  style={{ border: '1px solid #eee' }}
+/>
+
+// Contact card
+<QRCode
+  content={{ type: 'contact', name: 'Jane Doe', phone: '+1234567890' }}
+  size={300}
+/>
+
+// Custom loading / error slots
+<QRCode
+  content="https://example.com"
+  loading={<Spinner />}
+  onError={(err) => <p className="text-red-500">{err.message}</p>}
+/>
+
+// Deferred generation
+<QRCode content={url} enabled={url.length > 0} />
+
+// Ref forwarding
+const imgRef = useRef<HTMLImageElement>(null);
+<QRCode ref={imgRef} content="https://example.com" />
+```
+
+#### `<QRCodeSVG>` — Inline SVG
+
+Injects SVG markup via `dangerouslySetInnerHTML`. Fully styleable with CSS.
+
+```tsx
+import { QRCodeSVG } from 'qr-code-forge/react';
+
+<QRCodeSVG content="https://example.com" />
+
+// Tailwind CSS
+<QRCodeSVG
+  content="https://example.com"
+  darkColor="#4f46e5"
+  className="w-48 h-48"
+/>
+
+// Ref forwarding (gives the wrapper <div>)
+const divRef = useRef<HTMLDivElement>(null);
+<QRCodeSVG ref={divRef} content="https://example.com" />
+```
+
+#### Logo overlay (browser)
+
+Use a CSS overlay — set `errorCorrectionLevel="H"` so the QR stays scannable with the logo covering ~30% of it.
+
+```tsx
+function QRWithLogo() {
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <QRCode content="https://example.com" size={256} errorCorrectionLevel="H" />
+      <img
+        src="/logo.png"
+        alt=""
+        style={{
+          position: 'absolute',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 52, height: 52,
+          background: '#fff',
+          borderRadius: 8,
+          padding: 4,
+        }}
+      />
+    </div>
+  );
+}
+```
+
+Or generate the PNG server-side and serve it via an API route:
+
+```ts
+// Next.js — app/api/qr/route.ts
+import { generateQRCode } from 'qr-code-forge/node';
+
+export async function GET(req: Request) {
+  const url = new URL(req.url).searchParams.get('url') ?? 'https://example.com'\;
+  const result = await generateQRCode({
+    content: url,
+    format: 'png',
+    logo: { source: './public/logo.png', sizePercent: 20 },
+  });
+  return new Response(result.data as Buffer, {
+    headers: { 'Content-Type': 'image/png' },
+  });
+}
+```
+
+```tsx
+<img src={`/api/qr?url=${encodeURIComponent(url)}`} alt="QR Code" />
+```
+
+---
+
+### Hook
+
+`useQRCode` is for full control when you need custom rendering logic.
+
+```tsx
+import { useQRCode } from 'qr-code-forge/react';
+
+function MyQR() {
+  const { qrCode, loading, error, isIdle, regenerate } = useQRCode({
+    content: 'https://example.com',
+    format: 'dataurl',
+    size: 256,
+  });
+
+  if (loading) return <p>Generating…</p>;
+  if (error)   return <p>Error: {error.message}</p>;
+  if (!qrCode) return null;
+
+  return (
+    <>
+      <img src={qrCode.data as string} alt="QR Code" />
+      <button onClick={regenerate}>↺ Refresh</button>
+    </>
+  );
+}
+```
+
+**Dynamic URL (auto-regenerates on change):**
+
+```tsx
+const [url, setUrl] = useState('https://example.com');
+const { qrCode, loading } = useQRCode({ content: url });
+
+return (
+  <>
+    <input value={url} onChange={(e) => setUrl(e.target.value)} />
+    {loading && <span>Generating…</span>}
+    {qrCode && <img src={qrCode.data as string} alt="QR" />}
+  </>
+);
+```
+
+**Deferred generation (`enabled`):**
+
+```tsx
+const { qrCode } = useQRCode({
+  content: url,
+  enabled: url.length > 0,  // won't generate until url is non-empty
+});
+```
+
+#### `useQRCode` API
+
+| Option                 | Type                          | Default      | Description                                    |
+|------------------------|-------------------------------|--------------|------------------------------------------------|
+| `content`              | `QRContent \| string`         | *(required)* | Content to encode.                             |
+| `format`               | `'svg' \| 'dataurl'`          | `'dataurl'`  | Output format (PNG not available in browser).  |
+| `size`                 | `number`                      | `256`        | Image size in pixels.                          |
+| `margin`               | `number`                      | `4`          | Quiet-zone margin in modules.                  |
+| `darkColor`            | `string`                      | `'#000000'`  | Foreground colour.                             |
+| `lightColor`           | `string`                      | `'#ffffff'`  | Background colour.                             |
+| `errorCorrectionLevel` | `'L' \| 'M' \| 'Q' \| 'H'`   | `'M'`        | Error correction level.                        |
+| `enabled`              | `boolean`                     | `true`       | Set `false` to defer generation.               |
+
+**Returns:**
+
+| Field        | Type                   | Description                                                     |
+|--------------|------------------------|-----------------------------------------------------------------|
+| `qrCode`     | `QRCodeResult \| null` | Generated result, or `null` while loading / on error.           |
+| `loading`    | `boolean`              | `true` while generating.                                        |
+| `isIdle`     | `boolean`              | `true` when `enabled` is `false`.                               |
+| `error`      | `Error \| null`        | Error if generation failed.                                     |
+| `regenerate` | `() => void`           | Manually re-trigger generation (e.g. a Refresh button).         |
+
+---
+
+## Browser Usage
+
+```ts
+import { generateQRCode } from 'qr-code-forge';
+
+const result = await generateQRCode({
+  content: 'https://example.com',
+  format: 'dataurl',  // or 'svg'
+});
+
+const img = document.createElement('img');
+img.src = result.data as string;
+document.body.appendChild(img);
 ```
 
 ---
 
 ## API Reference
 
-### `generateQRCode(options: QRCodeOptions): Promise<QRCodeResult>`
+### `generateQRCode(options): Promise<QRCodeResult>`
 
-Main entry point. Generates a QR code from the given options.
+Import from `'qr-code-forge'` (browser-safe) or `'qr-code-forge/node'` (logo support).
 
 #### `QRCodeOptions`
 
-| Property               | Type                    | Default      | Description                                                |
-| ---------------------- | ----------------------- | ------------ | ---------------------------------------------------------- |
-| `content`              | `QRContent \| string`   | *(required)* | Content to encode. A plain string is treated as a URL.     |
-| `format`               | `'png' \| 'svg' \| 'dataurl'` | `'png'` | Output format.                                             |
-| `size`                 | `number`                | `256`        | Width/height in pixels (1 – 2048).                         |
-| `margin`               | `number`                | `4`          | Quiet-zone margin in modules.                              |
-| `darkColor`            | `string`                | `'#000000'`  | Foreground colour (CSS colour).                            |
-| `lightColor`           | `string`                | `'#ffffff'`  | Background colour (CSS colour).                            |
-| `errorCorrectionLevel` | `'L' \| 'M' \| 'Q' \| 'H'` | `'M'`   | Error correction level. Auto-raised to `H` when logo used. |
-| `logo`                 | `LogoOptions`           | —            | Optional logo to embed (PNG only).                         |
+| Property               | Type                          | Default      | Description                                              |
+|------------------------|-------------------------------|--------------|----------------------------------------------------------|
+| `content`              | `QRContent \| string`         | *(required)* | Content to encode. A plain string is treated as a URL.   |
+| `format`               | `'png' \| 'svg' \| 'dataurl'` | `'png'`      | Output format.                                           |
+| `size`                 | `number`                      | `256`        | Width/height in pixels (1–2048).                         |
+| `margin`               | `number`                      | `4`          | Quiet-zone margin in modules.                            |
+| `darkColor`            | `string`                      | `'#000000'`  | Foreground colour (CSS colour string).                   |
+| `lightColor`           | `string`                      | `'#ffffff'`  | Background colour (CSS colour string).                   |
+| `errorCorrectionLevel` | `'L' \| 'M' \| 'Q' \| 'H'`   | `'M'`        | Auto-raised to `H` when a logo is used.                  |
+| `logo`                 | `LogoOptions`                 | —            | Optional logo — **PNG + Node.js entry only**.            |
 
 #### `QRContent` (discriminated union)
 
 ```ts
-// URL (default when string is passed)
-{ type: 'url'; url: string }
+{ type: 'url';  url: string }
 
-// Plain text
 { type: 'text'; text: string }
 
-// Contact / vCard
 {
   type: 'contact';
-  name: string;        // required
-  phone: string;       // required
+  name: string;           // required
+  phone: string;          // required
   email?: string;
   organization?: string;
   title?: string;
@@ -173,243 +406,47 @@ Main entry point. Generates a QR code from the given options.
 
 #### `LogoOptions`
 
-| Property      | Type     | Default | Description                                |
-| ------------- | -------- | ------- | ------------------------------------------ |
-| `source`      | `string` | —       | Local file path or HTTP(S) URL.            |
-| `sizePercent` | `number` | `20`    | Logo width as % of QR width (1 – 40).     |
-| `margin`      | `number` | `4`     | Padding in pixels around the logo.         |
+| Property      | Type     | Default | Description                              |
+|---------------|----------|---------|------------------------------------------|
+| `source`      | `string` | —       | Local file path or HTTP(S) URL.          |
+| `sizePercent` | `number` | `20`    | Logo width as % of QR width (1–40).      |
+| `margin`      | `number` | `4`     | Padding in pixels around the logo.       |
 
 #### `QRCodeResult`
 
-| Property         | Type              | Description                         |
-| ---------------- | ----------------- | ----------------------------------- |
-| `data`           | `Buffer \| string` | PNG buffer, SVG string, or data URL. |
-| `mimeType`       | `string`          | MIME type of the output.            |
-| `format`         | `OutputFormat`    | The format that was used.           |
-| `encodedContent` | `string`          | Raw string encoded in the QR matrix.|
+| Property         | Type               | Description                             |
+|------------------|--------------------|-----------------------------------------|
+| `data`           | `Buffer \| string` | PNG buffer, SVG string, or data URL.    |
+| `mimeType`       | `string`           | MIME type of the output.                |
+| `format`         | `OutputFormat`     | The format that was used.               |
+| `encodedContent` | `string`           | Raw string encoded in the QR matrix.    |
 
 ---
 
-### `registerFormatter(type, formatter)`
+## Custom Formatters
 
-Register a custom content-type formatter at runtime.
-
-```ts
-import { registerFormatter, generateQRCode } from 'qr-code-forge';
-```
-
-See the [Extending with a New Formatter](#extending-with-a-new-formatter-example-email) section below.
-
----
-
-## Extending with a New Formatter (Example: Email)
-
-You can add new content types **without modifying the core source**:
+Register any new content type without touching core source:
 
 ```ts
 import { registerFormatter, generateQRCode } from 'qr-code-forge';
 
-// 1. Define your content interface
-interface EmailContent {
-  type: 'email';
-  to: string;
-  subject?: string;
-  body?: string;
-}
+// Wi-Fi QR
+interface WifiContent { type: 'wifi'; ssid: string; password: string; encryption?: 'WPA' | 'WEP' | 'nopass' }
 
-// 2. Register a formatter
-registerFormatter<EmailContent>('email', (content) => {
-  const params = new URLSearchParams();
-  if (content.subject) params.set('subject', content.subject);
-  if (content.body) params.set('body', content.body);
-  const qs = params.toString();
-  return `mailto:${content.to}${qs ? '?' + qs : ''}`;
-});
-
-// 3. Use it
-const result = await generateQRCode({
-  content: {
-    type: 'email',
-    to: 'hello@example.com',
-    subject: 'Hi there!',
-  } as any, // cast needed since EmailContent isn't in the base union
-});
-```
-
-Other types you might add: `phone` (`tel:`), `sms` (`smsto:`), `wifi` (`WIFI:...`), `geo` (`geo:lat,lng`).
-
----
-
-## Browser Usage
-
-The `dataurl` and `svg` formats work directly in the browser. Use a bundler (Vite, webpack, esbuild) that can handle the Node `qrcode` package:
-
-```ts
-import { generateQRCode } from 'qr-code-forge';
+registerFormatter<WifiContent>('wifi', (c) =>
+  `WIFI:T:${c.encryption ?? 'WPA'};S:${c.ssid};P:${c.password};;`
+);
 
 const result = await generateQRCode({
-  content: 'https://example.com',
-  format: 'dataurl',
+  content: { type: 'wifi', ssid: 'MyNetwork', password: 'secret' } as any,
 });
-
-const img = document.createElement('img');
-img.src = result.data as string;
-document.body.appendChild(img);
 ```
 
-> **Note:** Logo embedding uses Node.js `fs` and `zlib` APIs and is not available in browsers. Use server-side rendering for logo QR codes.
-
----
-
-## React Usage
-
-A built-in `useQRCode` hook is available at `qr-code-forge/react`:
-
-### Basic Example
-
-```tsx
-import { useQRCode } from 'qr-code-forge/react';
-
-function QRCodeImage() {
-  const { qrCode, loading, error } = useQRCode({
-    content: 'https://example.com',
-    size: 256,
-  });
-
-  if (loading) return <p>Generating…</p>;
-  if (error)   return <p>Error: {error.message}</p>;
-  if (!qrCode) return null;
-
-  return <img src={qrCode.data as string} alt="QR Code" />;
-}
-```
-
-### With Dynamic Content (e.g. from URL params)
-
-```tsx
-import { useSearchParams } from 'react-router-dom';
-import { useQRCode } from 'qr-code-forge/react';
-
-function DynamicQR() {
-  const [searchParams] = useSearchParams();
-  const url = searchParams.get('url') ?? 'https://example.com';
-
-  const { qrCode, loading, error } = useQRCode({
-    content: url,
-    format: 'dataurl',   // default for the hook
-    size: 512,
-    darkColor: '#1a1a2e',
-  });
-
-  if (loading) return <p>Generating…</p>;
-  if (error)   return <p>Error: {error.message}</p>;
-  if (!qrCode) return null;
-
-  return <img src={qrCode.data as string} alt="QR Code" />;
-}
-```
-
-### SVG Output (inline rendering)
-
-```tsx
-import { useQRCode } from 'qr-code-forge/react';
-
-function InlineSVG() {
-  const { qrCode } = useQRCode({
-    content: 'https://example.com',
-    format: 'svg',
-  });
-
-  if (!qrCode) return null;
-
-  return <div dangerouslySetInnerHTML={{ __html: qrCode.data as string }} />;
-}
-```
-
-### Contact Card QR
-
-```tsx
-import { useQRCode } from 'qr-code-forge/react';
-
-function ContactQR() {
-  const { qrCode } = useQRCode({
-    content: {
-      type: 'contact',
-      name: 'Jane Smith',
-      phone: '+1-555-123-4567',
-      email: 'jane@example.com',
-      organization: 'Acme Corp',
-    },
-  });
-
-  if (!qrCode) return null;
-  return <img src={qrCode.data as string} alt="Contact QR" />;
-}
-```
-
-### Conditional Generation
-
-```tsx
-import { useQRCode } from 'qr-code-forge/react';
-import { useState } from 'react';
-
-function ConditionalQR() {
-  const [url, setUrl] = useState('');
-
-  const { qrCode, loading } = useQRCode({
-    content: url || 'https://example.com',
-    enabled: url.length > 0,  // only generate when there's input
-  });
-
-  return (
-    <div>
-      <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Enter URL…" />
-      {loading && <p>Generating…</p>}
-      {qrCode && <img src={qrCode.data as string} alt="QR" />}
-    </div>
-  );
-}
-```
-
-### `useQRCode` API
-
-```ts
-function useQRCode(options: UseQRCodeOptions): UseQRCodeReturn;
-```
-
-| Option    | Type                                   | Default      | Description                                  |
-| --------- | -------------------------------------- | ------------ | -------------------------------------------- |
-| `content` | `QRContent \| string`                  | *(required)* | Content to encode.                           |
-| `format`  | `'svg' \| 'dataurl'`                   | `'dataurl'`  | Output format (logo/PNG not available in browser). |
-| `size`    | `number`                               | `256`        | Image size in pixels.                        |
-| `enabled` | `boolean`                              | `true`       | Set `false` to defer generation.             |
-| …         | All other `QRCodeOptions` (except `logo`) | —         | See main API docs above.                     |
-
-Returns `{ qrCode: QRCodeResult | null, loading: boolean, error: Error | null }`.
-
----
-
-## Node.js Usage
-
-```ts
-const { generateQRCode } = require('qr-code-forge');     // CommonJS
-// import { generateQRCode } from 'qr-code-forge';       // ESM
-
-const result = await generateQRCode({
-  content: 'https://example.com',
-  format: 'png',
-  size: 1024,
-  errorCorrectionLevel: 'H',
-});
-
-require('fs').writeFileSync('qr.png', result.data);
-```
+Other common types: `email` (`mailto:`), `phone` (`tel:`), `sms` (`smsto:`), `geo` (`geo:lat,lng`).
 
 ---
 
 ## Error Handling
-
-All errors are typed and extend `QRCodeForgeError`:
 
 ```ts
 import { ValidationError, LogoError, QRCodeForgeError } from 'qr-code-forge';
@@ -418,27 +455,128 @@ try {
   await generateQRCode({ content: 'not-a-url' });
 } catch (err) {
   if (err instanceof ValidationError) {
-    console.error(`Validation failed on field "${err.field}": ${err.message}`);
+    console.error(`Validation failed on "${err.field}": ${err.message}`);
   } else if (err instanceof LogoError) {
     console.error(`Logo error: ${err.message}`);
   }
 }
 ```
 
+| Scenario                        | Behaviour                                    |
+|---------------------------------|----------------------------------------------|
+| Very long text (> 4 296 chars)  | `ValidationError` thrown                     |
+| Logo on SVG / DataURL format    | Silently ignored                             |
+| Invalid / missing logo file     | `LogoError` thrown                           |
+| `size` > 2048                   | `ValidationError` thrown                     |
+| Non-HTTP(S) URL protocol        | `ValidationError` thrown                     |
+| Missing required contact fields | `ValidationError` with field name            |
+| Logo without explicit EC level  | Error correction auto-raised to `H`          |
+
 ---
 
-## Edge Cases Handled
+## Publishing (npm + GitHub Packages)
 
-| Scenario                        | Behaviour                                   |
-| ------------------------------- | ------------------------------------------- |
-| Very long text (> 4 296 chars)  | `ValidationError` thrown                     |
-| Logo on SVG / DataURL format    | Silently ignored (no crash)                  |
-| Invalid logo image file         | `LogoError` thrown                           |
-| Non-existent logo path          | `LogoError` thrown                           |
-| Size > 2 048                    | `ValidationError` thrown                     |
-| Non-HTTP URL protocol           | `ValidationError` thrown                     |
-| Missing required contact fields | `ValidationError` with field name            |
-| Logo used without explicit EC   | Error correction auto-raised to `H`          |
+This package is published to **both** registries automatically via GitHub Actions on every release.
+
+| Registry            | Package name                       | Install command                                                            |
+|---------------------|------------------------------------|----------------------------------------------------------------------------|
+| **npm**             | `qr-code-forge`                    | `npm install qr-code-forge`                                                |
+| **GitHub Packages** | `@jahidulsaeid/qr-code-forge`      | `npm install @jahidulsaeid/qr-code-forge --registry https://npm.pkg.github.com` |
+
+### How to publish a new version
+
+1. Bump the version:
+   ```bash
+   npm version patch   # 1.0.3 → 1.0.4
+   npm version minor   # 1.0.3 → 1.1.0
+   npm version major   # 1.0.3 → 2.0.0
+   ```
+
+2. Push the tag to trigger CI/publish:
+   ```bash
+   git push && git push --tags
+   ```
+
+   Or [create a GitHub Release](https://github.com/jahidulsaeid/qr-code-forge/releases/new) — the workflow runs automatically.
+
+### Required secrets
+
+Set these in **GitHub → Settings → Secrets and variables → Actions**:
+
+| Secret       | Value                                              |
+|--------------|----------------------------------------------------|
+| `NPM_TOKEN`  | npm access token — run `npm token create` locally  |
+
+> `GITHUB_TOKEN` is provided automatically by GitHub Actions.
+
+---
+
+## Contributing
+
+Contributions are welcome — bug fixes, new formatters, docs improvements, or new features. All PRs are appreciated.
+
+### Setup
+
+```bash
+# 1. Fork & clone
+git clone https://github.com/jahidulsaeid/qr-code-forge.git
+cd qr-code-forge
+
+# 2. Install dependencies
+npm install
+
+# 3. Create a branch
+git checkout -b feat/my-feature
+
+# 4. Make changes and run checks
+npm test          # run tests
+npm run lint      # type-check
+npm run build     # build bundles
+
+# 5. Commit (Conventional Commits)
+git commit -m "feat: add my feature"
+
+# 6. Push and open a Pull Request
+git push origin feat/my-feature
+```
+
+### Development scripts
+
+| Command                  | Description                              |
+|--------------------------|------------------------------------------|
+| `npm run build`          | Build ESM + CJS bundles via tsup         |
+| `npm run dev`            | Build in watch mode                      |
+| `npm test`               | Run all tests (Vitest)                   |
+| `npm run test:watch`     | Run tests in watch mode                  |
+| `npm run test:coverage`  | Run tests with coverage report           |
+| `npm run lint`           | Type-check without emitting              |
+
+### Commit conventions
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Prefix      | When to use                         |
+|-------------|-------------------------------------|
+| `feat:`     | New feature                         |
+| `fix:`      | Bug fix                             |
+| `docs:`     | Documentation only                  |
+| `test:`     | Tests only                          |
+| `refactor:` | Code change, no feature/fix         |
+| `chore:`    | Build, tooling, CI changes          |
+
+### Adding a new formatter
+
+1. Create `src/formatters/myTypeFormatter.ts`
+2. Register it in `src/formatters/index.ts`
+3. Export from `src/index.ts`
+4. Add tests in `tests/myType.test.ts`
+
+### Reporting bugs
+
+Open an issue at [github.com/jahidulsaeid/qr-code-forge/issues](https://github.com/jahidulsaeid/qr-code-forge/issues) with:
+- Steps to reproduce
+- Expected vs actual behaviour
+- Node.js / browser / React version
 
 ---
 
@@ -447,31 +585,22 @@ try {
 ```
 src/
 ├── index.ts                 # Public API barrel
-├── generateQRCode.ts        # Main function
-├── types.ts                 # All types, interfaces, error classes
+├── generateQRCode.ts        # Core generation function
+├── types.ts                 # Types, interfaces, error classes
 ├── validators.ts            # Input validation
+├── react.tsx                # React hook + components (browser-safe)
+├── node.ts                  # Node.js entry (logo support)
 ├── formatters/
 │   ├── index.ts             # Formatter registry (strategy pattern)
 │   ├── urlFormatter.ts      # URL → string
 │   ├── textFormatter.ts     # Text → string
-│   └── contactFormatter.ts  # Contact → vCard 3.0 string
+│   └── contactFormatter.ts  # Contact → vCard 3.0
 └── logo/
-    └── embedLogo.ts         # PNG logo compositing (pure Node, no native deps)
-```
-
----
-
-## Build
-
-```bash
-npm run build       # ESM + CJS via tsup
-npm run lint        # Type-check without emit
-npm test            # Vitest
-npm run test:coverage
+    └── embedLogo.ts         # PNG logo compositing (Node.js only)
 ```
 
 ---
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE) © [Jahidul Saeid](https://github.com/jahidulsaeid)
